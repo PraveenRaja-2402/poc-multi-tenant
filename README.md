@@ -1,92 +1,95 @@
-# Multi-Tenant Vector Database POC
+# 🌌 Multi-Tenant Vector Database POC
 
-A professional Proof-of-Concept (POC) demonstrating multi-tenant isolation using **FastAPI**, **SQLAlchemy** (Asynchronous), and **LangChain with PGVector**.
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=chainlink)](https://github.com/langchain-ai/langchain)
 
-This project implements **Schema-based Isolation** in PostgreSQL, ensuring that each tenant's data (both relational and vector) is physically separated and strictly isolated during runtime.
+A state-of-the-art Proof-of-Concept (POC) demonstrating **Schema-based Multi-Tenant Isolation** using **FastAPI**, **SQLAlchemy Async**, and **LangChain with PGVector**.
 
-## 🚀 Key Features
+---
 
-- **Dynamic Schema Switching**: Uses PostgreSQL `search_path` to isolate tenants at the database level.
-- **Async Relational Access**: FastAPI handles tenant-scoped requests using SQLAlchemy `AsyncSession`.
-- **Vector Isolation**: Integrates LangChain's `PGVector` to store and search embeddings within tenant-specific schemas.
-- **Automated Validation**: Includes concurrent testing to prove that data never leaks between tenants.
-- **RESTful API**: Clean endpoints for task management and vector knowledge base ingestion/search.
+## 💎 Key Features
 
-## 🏗️ Architecture
+-   **🛡️ Hard Isolation**: Physical separation of tenant data via PostgreSQL schemas (`SET LOCAL search_path`).
+-   **⚡ Async Performance**: Full asynchronous database access using `SQLAlchemy 2.0` and `asyncpg`.
+-   **🧠 Vector Knowledge Bases**: Isolated vector stores per tenant using `PGVector` and `FakeEmbeddings`.
+-   **🔄 Dynamic Context Switching**: Middleware-driven tenant context extraction from `x-tenant-slug` headers.
+-   **🧪 Robust Validation**: Automated concurrent tests to prove zero-data-leakage across tenants.
 
-The application uses a **Shared Database, Separate Schema** strategy:
-1. **Public Schema**: Stores global data (e.g., users).
-2. **Tenant Schemas** (`tenant_poc_a`, `tenant_poc_b`, etc.): Store tenant-specific tables and vector collections.
-3. **Middleware/Dependencies**: Extract `x-tenant-slug` from headers to set the session's `search_path`.
+---
+
+## 🏗️ Architecture Overview
+
+The system utilizes a **Shared Instance, Separate Schema** strategy:
+
+1.  **Public Schema**: Shared global configuration and user metadata.
+2.  **Tenant Schemas**: Each tenant (e.g., `tenant_poc_a`) gets its own isolated table set and vector collections.
+3.  **Connection Logic**:
+    *   **Relational**: Transactions are scoped using `SET LOCAL search_path`.
+    *   **Vector**: Connection strings are dynamically generated with the `?options=-c search_path=` parameter.
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Backend**: FastAPI (Python 3.14+)
-- **ORM**: SQLAlchemy 2.0 (Async)
-- **Vector DB**: PGVector (PostgreSQL extension)
-- **Orchestration**: LangChain
-- **Database**: PostgreSQL 16+
+-   **Backend**: [FastAPI](https://fastapi.tiangolo.com/) (Python 3.10+)
+-   **ORM**: [SQLAlchemy 2.0](https://docs.sqlalchemy.org/) (Async)
+-   **Vector Storage**: [PGVector](https://github.com/pgvector/pgvector)
+-   **Framework**: [LangChain](https://python.langchain.com/)
+-   **Networking**: [Uvicorn](https://www.uvicorn.org/)
 
-## 📥 Installation
+---
+
+## 🚀 Quick Start
 
 ### 1. Prerequisites
-- Docker (for PostgreSQL with pgvector) or a local PostgreSQL instance.
+- Docker (for PostgreSQL + pgvector)
 - Python 3.10+
 
-### 2. Setup Database
-Ensure the `pgvector` extension is installed. You can run the following in your database:
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-
-### 3. Environment Setup
+### 2. Environment Setup
 ```bash
-# Create virtual environment
+# Create and activate venv
 python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+.\venv\Scripts\activate
 
-# Install dependencies (ensure you have psycopg2, asyncpg, fastapi, uvicorn, langchain)
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 4. Initialize Database
-Run the initialization script to create tenant schemas and demo data:
+### 3. Initialize the Database
+This will create `tenant_poc_a` and `tenant_poc_b` schemas with initial data.
 ```bash
 python init_db.py
 ```
 
-## 🚦 Usage
-
-### Start the Server
+### 4. Run the API
 ```bash
 python main.py
 ```
-The server will be available at `http://127.0.0.1:8000`.
 
-### API Endpoints
+---
 
-| Method | Endpoint | Description | Header Required |
-| --- | --- | --- | --- |
-| **GET** | `/tasks` | List tasks for the tenant | `x-tenant-slug` |
-| **POST** | `/vector/ingest` | Add text to vector store | `x-tenant-slug` |
-| **GET** | `/vector/search` | Search vector store | `x-tenant-slug` |
+## 📡 API Reference
 
-### Testing Isolation
-You can run the provided test scripts to verify strict isolation:
-```bash
-# Run concurrent SQLAlchemy isolation test
-pytest poc/test_sqlalchemy_schema.py
+| Method | Endpoint | Description | Header Requirement |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/tasks` | List tasks for the active tenant | `x-tenant-slug` |
+| `POST` | `/vector/ingest` | Add text to tenant's vector store | `x-tenant-slug` |
+| `GET` | `/vector/search` | Search tenant's vector knowledge base | `x-tenant-slug` |
 
-# Run PGVector isolation test
-python poc/test_pgvector_schema.py
-```
+---
 
-## 📜 Professional Implementation details
-The core of the tenant isolation lies in the `get_tenant_session` dependency in `main.py`:
+## 📜 Implementation Deep Dive
+
+The heart of our isolation logic resides in the FastAPI Dependency:
+
 ```python
 async def get_tenant_session(x_tenant_slug: str = Header(...)):
     async with AsyncSessionLocal() as session:
+        # 🔒 Isolate the transaction to the specific tenant schema
         await session.execute(text(f"SET LOCAL search_path TO {x_tenant_slug}, public;"))
         yield session
 ```
-This ensures every query executed during the request lifecycle is automatically scoped to the correct schema.
+
+For a detailed technical breakdown, see **[TECHNICAL_GUIDE.md](file:///C:/Users/user/.gemini/antigravity/brain/bb13deda-7b98-46ce-9907-e292bce49f33/technical_guide.md)**.

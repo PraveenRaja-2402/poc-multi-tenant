@@ -16,7 +16,7 @@ DATABASE_URL = "postgresql+asyncpg://postgres:praveenraja2402@localhost:5433/tas
 # Langchain's PGVector works best with synchronous psycopg2 connections
 SYNC_DATABASE_URL = "postgresql://postgres:praveenraja2402@localhost:5433/taskflow"
 
-engine = create_async_engine(DATABASE_URL, pool_size=5, max_overflow=10, echo=False)
+engine = create_async_engine(DATABASE_URL, pool_size=2, max_overflow=0, echo=False)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 app = FastAPI()
@@ -59,6 +59,16 @@ async def get_tasks(
         }
         for row in rows
     ]
+
+@app.get("/debug/search-path")
+async def get_search_path(
+    session: AsyncSession = Depends(get_tenant_session)
+):
+    # This query directly checks what Postgres thinks the current search_path is
+    result = await session.execute(text("SHOW search_path;"))
+    search_path = result.scalar()
+    return {"search_path": search_path}
+
 
 # ---------------------------------------------------------
 # TEST 2: LangChain PGVector Tenant Isolation (New Additions)
