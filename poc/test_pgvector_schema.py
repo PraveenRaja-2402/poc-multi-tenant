@@ -4,7 +4,7 @@ from langchain_community.vectorstores import PGVector
 from langchain_community.embeddings import FakeEmbeddings
 import time
 
-DATABASE_URL = "postgresql://postgres:praveenraja2402@localhost:5433/taskflow"
+DATABASE_URL = "postgresql://postgres:praveenraja2402@localhost:5432/taskflow"
 
 
 def create_tenant_engine(tenant: str):

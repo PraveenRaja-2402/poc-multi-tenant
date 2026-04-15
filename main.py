@@ -12,9 +12,9 @@ from langchain_community.vectorstores import PGVector
 from langchain_core.documents import Document
 from langchain_community.embeddings import FakeEmbeddings
 
-DATABASE_URL = "postgresql+asyncpg://postgres:praveenraja2402@localhost:5433/taskflow"
+DATABASE_URL = "postgresql+asyncpg://postgres:praveenraja2402@localhost:5432/taskflow"
 # Langchain's PGVector works best with synchronous psycopg2 connections
-SYNC_DATABASE_URL = "postgresql://postgres:praveenraja2402@localhost:5433/taskflow"
+SYNC_DATABASE_URL = "postgresql://postgres:praveenraja2402@localhost:5432/taskflow"
 
 engine = create_async_engine(DATABASE_URL, pool_size=2, max_overflow=0, echo=False)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
